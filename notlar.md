@@ -18,3 +18,26 @@ Shared Clipboard and Drag and Drop in "Devices"
 - test with `sudo docker run hello-world`
 
 - optional: [create docker group, no sudo needed](https://docs.docker.com/engine/install/linux-postinstall/)
+
+project_root/
+│
+|──secrets/ db_pw.txt , db_rootpw.txt wp_adminpw.txt (pw password demek)
+├── srcs/
+|	|──requirements
+|	|	├── nginx/
+|		| 		├── Dockerfile
+│   	│   	├── nginx.conf
+│  		│   	└── ssl/ (TLS sertifikaları buraya)
+│   	│
+│   	├── wordpress/
+│   	│   	├── Dockerfile
+│   	│   	└── wp-config.php
+│   	│
+│   	├── mariadb/
+│   	│   ├── Dockerfile
+│   	│   └── tools/
+|		|			|──mariadb_script.sh
+│
+├── docker-compose.yml
+├── Makefile
+└── .env (çevresel değişkenler)
