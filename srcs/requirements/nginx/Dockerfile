@@ -1,11 +1,16 @@
-FROM nginx:alpine
+FROM alpine:3.17
 
-# TLS sertifikalarını kopyala
-COPY ./ssl/ /etc/nginx/ssl/
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+RUN apk update && \
+    apk add nginx openssl && \
+    rm -rf /var/cache/apk/* && \
+    rm -rf /etc/nginx/conf.d/default.conf
 
-# 443 portunu aç
-EXPOSE 443
+COPY tools/setup.sh /setup.sh
+RUN chmod +x /setup.sh
 
-# Nginx'i başlat
-CMD ["nginx", "-g", "daemon off;"]
+COPY conf/default.conf /etc/nginx/conf.d/default.conf
+
+
+EXPOSE 80 443
+
+CMD ["/setup.sh"]

@@ -1,5 +1,12 @@
-FROM mariadb:10.6-alpine
-COPY ./tools/ /docker-entrypoint-initdb.d/
-RUN chmod +x /docker-entrypoint-initdb.d/mariadb_script.sh && \
-    mkdir -p /run/secrets && \
-    chown -R mysql:mysql /run/secrets
+FROM debian:bullseye
+
+RUN apt-get update && \
+    apt-get install -y mariadb-server && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY tools/setup.sh /setup.sh
+RUN chmod +x /setup.sh
+
+EXPOSE 3306
+
+CMD ["bash", "/setup.sh"]

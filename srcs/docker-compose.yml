@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  nginx:
+    build: ./requirements/nginx
+    container_name: nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - wordpress_files:/var/www/html
+    networks:
+      - inception
+    depends_on:
+      - wordpress
+    restart: unless-stopped
+
+  wordpress:
+    build: ./requirements/wordpress
+    container_name: wordpress
+    volumes:
+      - wordpress_files:/var/www/html
+    networks:
+      - inception
+    depends_on:
+      - mariadb
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD_FILE: ${MYSQL_PASSWORD_FILE}
+    secrets:
+      - db_password.txt
+      - credentials.txt
+    restart: unless-stopped
+
+  mariadb:
+    build: ./requirements/mariadb
+    container_name: mariadb
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD_FILE: ${MYSQL_PASSWORD_FILE}
+      MYSQL_ROOT_PASSWORD_FILE: ${MYSQL_ROOT_PASSWORD_FILE}
+    secrets:
+      - db_password.txt
+      - db_root_password.txt
+    networks:
+      - inception
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${VOLUME_DB}
+
+  wordpress_files:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${VOLUME_WP}
+  nginx_certs: # Yeni volume tanımı
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./srcs/requirements/nginx/certs
+
+networks:
+  inception:
+    driver: bridge
+
+secrets:
+  db_password.txt:
+    file: ../secrets/db_password.txt
+  db_root_password.txt:
+    file: ../secrets/db_root_password.txt
+  credentials.txt:
+    file: ../secrets/credentials.txt
