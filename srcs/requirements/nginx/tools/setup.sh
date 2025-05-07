@@ -1,15 +1,16 @@
 #!/bin/sh
 
-# SSL sertifikası oluştur
- openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
-        -keyout /etc/ssl/private/mehmeyil.key \
-        -out /etc/ssl/certs/mehmeyil.crt \
-        -subj "/C=TR/ST=Wien/L=Kagran/O=mehmeyil/CN=mehmeyil.42.fr"
+# Sabit kullanıcı adı
 
-sleep 5 # WordPress'in başlaması için biraz bekleyin (gerekirse artırılabilir)
+if [ -f "/etc/nginx/conf.d/nginx.conf" ]; then
+    sed -i "s/mehmeyil\.42\.fr/${USERNAME}\.42\.fr/g" /etc/nginx/conf.d/nginx.conf
+fi
 
-# Nginx yapılandırmasını test et
-nginx -t
+if [ ! -f "/etc/ssl/certs/nginx_certificate.crt" ]; then
+    openssl req -new -newkey rsa:4096 -x509 -sha512 -days 365 -nodes \
+    -subj "/C=AT/ST=Vienna/O=42/OU=42/CN=${USERNAME}.42.fr" \
+    -out /etc/ssl/certs/nginx_certificate.crt \
+    -keyout /etc/ssl/private/nginx_certificate.key
+fi
 
-# NGINX'i ön planda çalıştır
-exec nginx -g 'daemon off;'
+exec "$@"

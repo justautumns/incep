@@ -1,16 +1,20 @@
-FROM alpine:3.17
+FROM debian:bookworm-slim
 
-RUN apk update && \
-    apk add nginx openssl && \
-    rm -rf /var/cache/apk/* && \
-    rm -rf /etc/nginx/conf.d/default.conf
+# Gerekli bağımlılıkları yükle
+RUN apt-get update -y && apt-get install -y \
+    nginx \
+    openssl \
+    bash
 
-COPY tools/setup.sh /setup.sh
-RUN chmod +x /setup.sh
+# Ş script'ini konteynıra kopyala
+COPY tools/setup.sh /usr/local/bin/script.sh
+RUN chmod +x /usr/local/bin/script.sh
 
-COPY conf/default.conf /etc/nginx/conf.d/default.conf
+# Nginx konfigürasyon dosyasını kopyala
+COPY conf/nginx.conf /etc/nginx/conf.d/
 
+# Ş script'ini başlangıç komutu olarak çalıştır
+CMD ["/bin/sh", "/usr/local/bin/script.sh", "nginx", "-g", "daemon off;"]
 
-EXPOSE 80 443
-
-CMD ["/setup.sh"]
+# Nginx için port aç
+EXPOSE 443

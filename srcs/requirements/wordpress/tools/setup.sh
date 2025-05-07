@@ -1,46 +1,47 @@
-# #!/bin/sh
-
-# # WordPress'i indir ve kur
-# curl -O https://wordpress.org/latest.tar.gz
-# tar -xzf latest.tar.gz
-# cp -r wordpress/* /var/www/html/
-# rm -rf wordpress latest.tar.gz
-
-# # wp-config.php dosyasını oluştur
-# cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
-# sed -i "s/database_name_here/${MYSQL_DATABASE}/" /var/www/html/wp-config.php
-# sed -i "s/username_here/${MYSQL_USER}/" /var/www/html/wp-config.php
-# sed -i "s/password_here/$(cat ${MYSQL_PASSWORD_FILE})/" /var/www/html/wp-config.php
-# sed -i "s/localhost/mariadb/" /var/www/html/wp-config.php
-
-# # PHP-FPM'i ön planda çalıştır
-# exec php-fpm
 #!/bin/sh
 set -e
 
-# WordPress'i indir ve kur
-curl -O https://wordpress.org/latest.tar.gz
-tar -xzf latest.tar.gz
-cp -r wordpress/* /var/www/html/
-rm -rf wordpress latest.tar.gz
+echo "🌐 WordPress kurulumu başlatılıyor..."
 
-# wp-config.php dosyasını oluştur
-cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
-sed -i "s/database_name_here/${MYSQL_DATABASE}/" /var/www/html/wp-config.php
-sed -i "s/username_here/${MYSQL_USER}/" /var/www/html/wp-config.php
-sed -i "s/password_here/$(cat ${MYSQL_PASSWORD_FILE})/" /var/www/html/wp-config.php
-sed -i "s/localhost/mariadb/" /var/www/html/wp-config.php
+# WP-CLI kurulumu
+if ! command -v wp >/dev/null 2>&1; then
+    echo "⚙️ WP-CLI kuruluyor..."
+    curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    chmod +x wp-cli.phar
+    mv wp-cli.phar /usr/local/bin/wp
+fi
 
-# Güvenlik anahtarlarını WordPress CLI ile üretip wp-config.php'ye ekle
-wp config create --dbname=${MYSQL_DATABASE} --dbuser=${MYSQL_USER} --dbpass=$(cat ${MYSQL_PASSWORD_FILE}) --dbhost=mariadb --skip-salts --path=/var/www/html
-wp config set AUTH_KEY "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep AUTH_KEY | cut -d"'" -f2)" --raw
-wp config set SECURE_AUTH_KEY "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep SECURE_AUTH_KEY | cut -d"'" -f2)" --raw
-wp config set LOGGED_IN_KEY "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep LOGGED_IN_KEY | cut -d"'" -f2)" --raw
-wp config set NONCE_KEY "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep NONCE_KEY | cut -d"'" -f2)" --raw
-wp config set AUTH_SALT "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep AUTH_SALT | cut -d"'" -f2)" --raw
-wp config set SECURE_AUTH_SALT "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep SECURE_AUTH_SALT | cut -d"'" -f2)" --raw
-wp config set LOGGED_IN_SALT "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep LOGGED_IN_SALT | cut -d"'" -f2)" --raw
-wp config set NONCE_SALT "$(curl -s https://api.wordpress.org/secret-key/1.1/salt/ | grep NONCE_SALT | cut -d"'" -f2)" --raw
+# WordPress dosyaları indiriliyor (yalnızca daha önce indirilmemişse)
+if [ ! -f /var/www/html/wp-load.php ]; then
+    echo "📥 WordPress indiriliyor..."
+    wp core download --path=/var/www/html --allow-root
+    chown -R www-data:www-data /var/www/html
+fi
 
-# PHP-FPM'i ön planda çalıştır
-exec php-fpm
+cd /var/www/html
+
+# wp-config.php oluşturuluyor
+if [ ! -f wp-config.php ]; then
+    echo "🛠 wp-config.php oluşturuluyor..."
+    wp config create \
+        --dbname="$MYSQL_DATABASE" \
+        --dbuser="$MYSQL_USER" \
+        --dbpass="$MYSQL_PASSWORD" \
+        --dbhost="mariadb:3306" \
+        --allow-root
+fi
+
+# WordPress kurulumu yapılıyor
+if ! wp core is-installed --allow-root; then
+    echo "🔧 WordPress ilk yapılandırma yapılıyor..."
+    wp core install \
+        --url="${WP_URL}" \
+        --title="${WP_TITLE}" \
+        --admin_user="${WP_ADMIN}" \
+        --admin_password="${WP_ADMIN_PASSWORD}" \
+        --admin_email="${WP_ADMIN_EMAIL}" \
+        --allow-root
+fi
+
+echo "✅ WordPress kurulumu tamamlandı. PHP-FPM başlatılıyor..."
+exec php-fpm8.2 -F
